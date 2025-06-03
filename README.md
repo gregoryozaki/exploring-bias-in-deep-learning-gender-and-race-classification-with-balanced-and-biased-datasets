@@ -19,9 +19,9 @@ Vai usar o ConvNeXt-Tiny, que é moderno, poderoso e sensível a padrões sutis 
 Adaptará a última camada para prever raça ou gênero (multi tarefa).
 
 ### ✅ Plano de Treinamento e Avaliação
-A) Treinar dois modelos iguais:
-- Um com CelebA
-- Um com FairFace
+A) Treinar um modelos com dois datasets:
+- CelebA (Gênero e Raça desquilibrados)
+- FairFace (Gênero e Raça equilibrados)
 
 B) Avaliar cada modelo:
 - No seu próprio conjunto de validação (padrão)
