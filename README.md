@@ -34,5 +34,4 @@ B) Avaliar cada modelo:
 ### 🛠️ Ferramentas úteis
 - PyTorch para treino
 - Pandas
-- - Seaborn / Matplotlib para visualização
 
