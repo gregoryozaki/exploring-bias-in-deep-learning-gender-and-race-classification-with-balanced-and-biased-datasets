@@ -1,9 +1,9 @@
 # Explorando o Viés em Deep Learning: Classificação de Gênero e Raça com Datasets Balanceados e Enviesados
 
-## ✅ Objetivo do Experimento
+### ✅ Objetivo do Experimento
 Comparar o impacto do viés nos datasets FairFace (balanceado) e CelebA (enviesado), treinando um modelo de IA (ConvNeXt-Tiny) para prever raça e/ou gênero, e avaliando justiça e desempenho por grupo.
 
-## 🔧 Preparação dos Dados
+### 🔧 Preparação dos Dados
 - Padronizou ambos os datasets (FairFace e CelebA).
 - Criou atributo raça no CelebA (que não tinha originalmente).
 - Dividiu os dois datasets igualmente:
@@ -13,12 +13,12 @@ Comparar o impacto do viés nos datasets FairFace (balanceado) e CelebA (enviesa
 
 Foi realizada a padronização dos datasets FairFace e CelebA por meio de técnicas de dataset downsampling, schema alignment e data preprocessing, incluindo limpeza de atributos, seleção de instâncias e reformatação de caminhos de arquivos. Para lidar com a ausência do atributo racial no CelebA, foi utilizado pseudo-labeling via modelo pré-treinado (FairFace), com posterior unificação de estrutura de metadados em arquivos CSV padronizados.
 
-## 🧠 Modelo Escolhido
+### 🧠 Modelo Escolhido
 
 Vai usar o ConvNeXt-Tiny, que é moderno, poderoso e sensível a padrões sutis — ideal para detectar viés.
 Adaptará a última camada para prever raça ou gênero (multi tarefa).
 
-## 🧪 Plano de Treinamento e Avaliação
+### 🧪 Plano de Treinamento e Avaliação
 A) Treinar dois modelos iguais:
 - Um com CelebA
 - Um com FairFace
@@ -28,10 +28,10 @@ B) Avaliar cada modelo:
 - No conjunto de validação do outro dataset (teste cruzado)
 - Comparar desempenho por grupo, como: Mulheres negras, homens brancos, etc.
 
-## 📊 Métricas e Análises
+### 📊 Métricas e Análises
 - Acurácia, Precision, Recall, F1 por grupo (raça × gênero)
 
-## 🔎 Ferramentas úteis
+### 🔎 Ferramentas úteis
 - PyTorch para treino
 - Pandas
 - - Seaborn / Matplotlib para visualização
