@@ -20,7 +20,7 @@ Adaptará a última camada para prever raça ou gênero (multi tarefa).
 
 ### ✅ Plano de Treinamento e Avaliação
 A) Treinar um modelos com dois datasets:
-- CelebA (Gênero e Raça desquilibrados)
+- CelebA (Gênero e Raça desequilibrados)
 - FairFace (Gênero e Raça equilibrados)
 
 B) Avaliar cada modelo:
