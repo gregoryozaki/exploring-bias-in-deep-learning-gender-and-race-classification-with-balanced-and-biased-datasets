@@ -6,11 +6,15 @@ import os
 drive.mount('/content/drive')
 
 drive_base_path = '/content/drive/MyDrive/datasets'
+celeba_zip_drive = os.path.join(drive_base_path, 'dataset-celeba', 'celeba.zip')
 fairface_zip_drive = os.path.join(drive_base_path, 'dataset-fairface', 'fairface.zip')
 
+celeba_zip_local = '/content/celeba.zip'
 fairface_zip_local = '/content/fairface.zip'
+celeba_extract_path = '/content/celeba'
 fairface_extract_path = '/content/fairface'
 
+!cp "{celeba_zip_drive}" "{celeba_zip_local}"
 !cp "{fairface_zip_drive}" "{fairface_zip_local}"
 
 def extract_zip(zip_path, extract_to):
@@ -23,11 +27,17 @@ def extract_zip(zip_path, extract_to):
     else:
         print(f"📂 Já existe a pasta extraída: {extract_to}")
 
+extract_zip(celeba_zip_local, celeba_extract_path)
 extract_zip(fairface_zip_local, fairface_extract_path)
 
 fairface_csv_train_drive = '/content/drive/MyDrive/datasets/dataset-fairface/fairface_train.csv'
 fairface_csv_val_drive   = '/content/drive/MyDrive/datasets/dataset-fairface/fairface_val.csv'
 
+celeba_csv_train_drive = '/content/drive/MyDrive/datasets/dataset-celeba/celeba_train.csv'
+celeba_csv_val_drive   = '/content/drive/MyDrive/datasets/dataset-celeba/celeba_val.csv'
+
+!cp "{celeba_csv_train_drive}" /content/
+!cp "{celeba_csv_val_drive}" /content/
 !cp "{fairface_csv_train_drive}" /content/
 !cp "{fairface_csv_val_drive}" /content/
 
@@ -83,9 +93,11 @@ fairface_train_dataset = FaceDataset('/content/fairface_train.csv', '/content/fa
 fairface_val_dataset   = FaceDataset('/content/fairface_val.csv', '/content/fairface/fairface', transform)
 
 from torch.utils.data import DataLoader
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
-batch_size = 16
+
+
+batch_size = 64
 num_workers = 2
 
 fairface_train_loader = DataLoader(fairface_train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers,  pin_memory=True)
@@ -99,25 +111,25 @@ from torchvision.models import ConvNeXt_Tiny_Weights
 class MultiTaskConvNeXtTiny(nn.Module):
     def __init__(self, pretrained=True):
         super(MultiTaskConvNeXtTiny, self).__init__()
-        
+
         # Carrega o backbone
         weights = ConvNeXt_Tiny_Weights.IMAGENET1K_V1 if pretrained else None
         self.backbone = models.convnext_tiny(weights=weights)
-        
+
         # Remove a camada final padrão
         self.backbone.classifier = nn.Identity()
         hidden_dim = 768  # Para ConvNeXt-Tiny
 
         # Cabeça para gênero
         self.gender_head = nn.Sequential(
-            nn.Flatten(),  # Corrige o shape
+            nn.Flatten(),
             nn.LayerNorm(hidden_dim),
             nn.Linear(hidden_dim, 2)
         )
 
         # Cabeça para raça
         self.race_head = nn.Sequential(
-            nn.Flatten(),  # Corrige o shape
+            nn.Flatten(),
             nn.LayerNorm(hidden_dim),
             nn.Linear(hidden_dim, 7)
         )
@@ -128,31 +140,30 @@ class MultiTaskConvNeXtTiny(nn.Module):
         race_out = self.race_head(features)
         return gender_out, race_out
 
-# Correto agora
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = MultiTaskConvNeXtTiny(pretrained=True).to(device)
 
 # CELULA 04
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import AdamW
-from tqdm import tqdm
-import torch
+from tqdm.notebook import tqdm
+
 torch.cuda.empty_cache()
 
-# Configurações
-epochs = 5
+epochs = 10
 learning_rate = 1e-4
 
-# Funções de perda
 loss_fn_gender = nn.CrossEntropyLoss()
 loss_fn_race = nn.CrossEntropyLoss()
 
-# Otimizador
 optimizer = AdamW(model.parameters(), lr=learning_rate)
 
-# Loop de treino
-def train_one_epoch(model, dataloader, optimizer, device):
+# GradScaler para mixed precision
+scaler = torch.amp.GradScaler()
+
+def train_one_epoch(model, dataloader, optimizer, device, scaler):
     model.train()
     total_loss = 0
     correct_gender = 0
@@ -166,15 +177,21 @@ def train_one_epoch(model, dataloader, optimizer, device):
 
         optimizer.zero_grad()
 
-        gender_preds, race_preds = model(images)
+        # Mixed precision autocast
+        with torch.autocast(device_type='cuda'):
+            gender_preds, race_preds = model(images)
 
-        loss_gender = loss_fn_gender(gender_preds, gender_labels)
-        loss_race = loss_fn_race(race_preds, race_labels)
-        loss = loss_gender + loss_race
-        loss.backward()
-        optimizer.step()
+            loss_gender = loss_fn_gender(gender_preds, gender_labels)
+            loss_race = loss_fn_race(race_preds, race_labels)
+            loss = loss_gender + loss_race
+
+        # Escala o loss e faz backward
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
 
         total_loss += loss.item()
+
         _, gender_predicted = torch.max(gender_preds, 1)
         _, race_predicted = torch.max(race_preds, 1)
 
@@ -187,7 +204,6 @@ def train_one_epoch(model, dataloader, optimizer, device):
     race_acc = correct_race / total
     return avg_loss, gender_acc, race_acc
 
-# Loop de validação
 def validate(model, dataloader, device):
     model.eval()
     total_loss = 0
@@ -201,13 +217,15 @@ def validate(model, dataloader, device):
             gender_labels = gender_labels.to(device)
             race_labels = race_labels.to(device)
 
-            gender_preds, race_preds = model(images)
+            with torch.autocast(device_type='cuda'):
+                gender_preds, race_preds = model(images)
 
-            loss_gender = loss_fn_gender(gender_preds, gender_labels)
-            loss_race = loss_fn_race(race_preds, race_labels)
-            loss = loss_gender + loss_race
+                loss_gender = loss_fn_gender(gender_preds, gender_labels)
+                loss_race = loss_fn_race(race_preds, race_labels)
+                loss = loss_gender + loss_race
 
             total_loss += loss.item()
+
             _, gender_predicted = torch.max(gender_preds, 1)
             _, race_predicted = torch.max(race_preds, 1)
 
@@ -223,7 +241,7 @@ def validate(model, dataloader, device):
 for epoch in range(epochs):
     print(f"\n🌟 Época {epoch+1}/{epochs}")
 
-    train_loss, train_gender_acc, train_race_acc = train_one_epoch(model, fairface_train_loader, optimizer, device)
+    train_loss, train_gender_acc, train_race_acc = train_one_epoch(model, fairface_train_loader, optimizer, device, scaler)
     val_loss, val_gender_acc, val_race_acc = validate(model, fairface_val_loader, device)
 
     print(f"🧠 Treino — Loss: {train_loss:.4f}, Gênero Acc: {train_gender_acc:.4f}, Raça Acc: {train_race_acc:.4f}")
