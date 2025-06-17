@@ -95,8 +95,6 @@ fairface_val_dataset   = FaceDataset('/content/fairface_val.csv', '/content/fair
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 
-
-
 batch_size = 64
 num_workers = 2
 
