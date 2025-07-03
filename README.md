@@ -1,4 +1,4 @@
-# Explorando o Viés em Deep Learning: Classificação de Gênero e Raça com Datasets Balanceados e Enviesados
+# Investigando o Viés em Deep Learning para Classificação de Gênero e Raça: Um Estudo Comparativo com ConvNeXt em Datasets Balanceados e Enviesados
 
 ### 🎯 Objetivo do Experimento
 Comparar o impacto do viés nos datasets FairFace (balanceado) e CelebA (enviesado), treinando um modelo de IA (ConvNeXt-Tiny) para prever raça e/ou gênero, e avaliando justiça e desempenho por grupo.
